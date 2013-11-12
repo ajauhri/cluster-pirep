@@ -41,9 +41,9 @@ def visualize():
 		Y = np.asarray(columns[LONG])
 		Z = np.asarray(columns[ALT])
 		if DEBUG:
-			print X
-			print Y
-			print Z
+			print 'X =', X
+			print 'Y =', Y
+			print 'Z =', Z
 		fig = plt.figure()
 		ax = fig.add_subplot(111, projection='3d')
 		ax.scatter(X, Y, Z, c='b', marker='^')
