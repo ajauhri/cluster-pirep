@@ -50,8 +50,9 @@ def visualize():
 		ax.set_xlabel(LAT)
 		ax.set_ylabel(LONG)
 		ax.set_zlabel(ALT)
-		plt.show()
 
+		plt.savefig('FIG/scatter_plot.png', bbox_inches=0)
+		plt.show()
 
 	except EnvironmentError, e: #parent of IOError, OSError 
 		print e 
