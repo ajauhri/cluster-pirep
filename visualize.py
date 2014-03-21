@@ -10,7 +10,7 @@ from mpl_toolkits.mplot3d import axes3d
 import matplotlib.pyplot as plt
 
 # Pre-defined values
-CSV_FILE = 'data/aircraft_reports_AK_2013.csv' 
+CSV_FILE = 'data/small.csv' 
 LAT = 'Latitude'
 LONG = 'Longitude'
 ALT = 'Altitude(Ft)'
@@ -41,6 +41,8 @@ def visualize():
 		Y = np.asarray(columns[LONG])
 		Z = np.asarray(columns[ALT])
 		if DEBUG:
+			print 'speed =', columns['Wind Speed(Kt)']
+			print 'keys =', columns.keys()
 			print 'X =', X
 			print 'Y =', Y
 			print 'Z =', Z
