@@ -2,6 +2,7 @@
 #define PROCESS_PIREP_INCLUDED
 #define _USE_MATH_DEFINES
 #define _FEET_TO_NM 0.000164579 
+#define _EARTH_RADIUS_NM 3440.06
 
 #include<cmath>
 #include<Eigen/Dense>
@@ -34,7 +35,7 @@ std::string erase_quotes(const std::string& str)
 MatrixXd get_cartesian(float lat, float lon, float alt)
 {
     MatrixXd r(3, 1);
-    float R = alt + 3440.06;
+    float R = alt + _EARTH_RADIUS_NM;
     r(0, 0) = R * cos(lat) * cos(lon);
     r(1, 0) = R * cos(lat) * sin(lon);
     r(2, 0) = R * sin(lat);
@@ -75,6 +76,5 @@ MatrixXd process_pirep(const std::string& filename)
     }
     return X;
 }
-
 #endif
 
