@@ -51,7 +51,6 @@ MatrixXd process_pirep(const std::string& filename)
     //determine the size of the file
     while(file >> row)
         size++;
-    std::cout<<"size = "<<size<<std::endl;
     file.clear();
     file.seekg(0, std::ios::beg); 
     MatrixXd X(size,4);
@@ -62,7 +61,7 @@ MatrixXd process_pirep(const std::string& filename)
     // 13 - Longitude
     // 14 - Altitude (ft.)
     
-    for (int i=0; i < size; ++i)
+    for (int i=0; i <size; ++i)
     {
         file >> row;
         std::istringstream is(row[1]);
@@ -72,9 +71,9 @@ MatrixXd process_pirep(const std::string& filename)
         X(i, 1) = atof(erase_quotes(row[12]).c_str()) * M_PI / 180;
         X(i, 2) = atof(erase_quotes(row[13]).c_str()) * M_PI / 180;
         X(i, 3) = atof(erase_quotes(row[14]).c_str()) * _FEET_TO_NM;
-        X.block(i, 1, 1, 3) = get_cartesian(X(i, 1), X(i, 2), X(i, 3)).transpose();
+        X.block<1, 3>(i, 1) = get_cartesian(X(i, 1), X(i, 2), X(i, 3)).transpose();
     }
-    return X;
+    return X.rightCols(X.cols()-1);
 }
 #endif
 
