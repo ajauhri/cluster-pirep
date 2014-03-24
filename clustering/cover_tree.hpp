@@ -6,7 +6,7 @@
 
 struct node
 {
-  //point p;
+    Eigen::VectorXd point;
     std::vector<float> dist;
 };
 
