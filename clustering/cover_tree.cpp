@@ -70,6 +70,31 @@ float get_min(std::vector<p_ds_node>& Qi_p_ds)
     return min;
 }
 
+bool compare(const p_ds_node& a, const p_ds_node& b)
+{
+    return (a->dist < b->dist);
+}
+
+void knn(int k, const Eigen::VectorXd& p, p_tree_node& root)
+{
+    std::vector<p_ds_node> Qi_p_ds;
+    p_ds_node ds(new ds_node(root, distance(root->point, p)));
+    Qi_p_ds.push_back(ds);
+    for(int i = root->max_scale; i >= root->min_scale; --i)
+    {
+        get_children(p, Qi_p_ds, i);
+        sort(Qi_p_ds.begin(), Qi_p_ds.end(), compare);
+        float d_p_Q = Qi_p_ds[k-1]->dist;
+    
+        float scale_dist = pow(g_scale, i);
+        for (unsigned int i=0; i<Qi_p_ds.size(); ++i)
+        {
+            if (Qi_p_ds[i]->dist > scale_dist + d_p_Q)
+                Qi_p_ds.erase(Qi_p_ds.begin() + i);
+        }
+    }
+    sort(Qi_p_ds.begin(), Qi_p_ds.end(), compare);
+}
 void insert(const Eigen::VectorXd& p, p_tree_node& root, int max_scale)
 {
     int i = max_scale;
@@ -83,7 +108,7 @@ void insert(const Eigen::VectorXd& p, p_tree_node& root, int max_scale)
         get_children(p, Qi_p_ds, i);
         // if all the cover set nodes have distance > 2^i
         float min_d_p_Q = get_min(Qi_p_ds);
-        if (min_d_p_Q == 0)
+        if (min_d_p_Q == 0.0f)
             return;
         else if (min_d_p_Q > pow(g_scale, i))
             break;
@@ -113,6 +138,7 @@ void insert(const Eigen::VectorXd& p, p_tree_node& root, int max_scale)
             i--;
         }
     }
+    // need to check if p already in self.children?
     parent->children[pi].push_back(create_tree_node(p));
     root->min_scale = std::min(root->min_scale, pi-1);
 }
@@ -124,7 +150,8 @@ int main(int argc, char **argv)
     // it would be preferred to have a generic parser... 
     MatrixXd X = process_pirep(std::string("../data/small_cluster.csv")); 
     std::cout<<"parsing done\n";
-
+    std::cout<<"total points="<<X.rows()<<"\n";
+    
     float max_dist = 0.0f;
     for (int i=1; i<X.rows(); ++i)
     {
@@ -142,8 +169,22 @@ int main(int argc, char **argv)
 
     // here again this has data specific columns and it makes the usage limited. Need to expand here too...
     //p_tree_node top = batch_create(X);
-    std::cout<<"batch creation done\n";
-    std::cout<<root->children.size(); 
+    std::cout<<"all points inserted\n";
+    std::vector<p_tree_node> queue;
+    queue.push_back(root);
+    int s = 1;
+    while (queue.size() > 0)
+    {
+        typedef std::map<int, std::vector<boost::shared_ptr<tree_node>>>::iterator iter;
+        for (iter i = queue[0]->children.begin(); i != queue[0]->children.end(); ++i)
+        {
+            for(unsigned int j=0; j < i->second.size(); ++j)
+                queue.push_back(i->second[j]);
+            s += i->second.size();
+            
+        }
+        queue.erase(queue.begin());
+    }
     return 0;
 }
 
