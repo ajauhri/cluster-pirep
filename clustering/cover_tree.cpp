@@ -5,12 +5,12 @@
 #include<algorithm>
 #include<random>
 
-
 using Eigen::MatrixXd;
 const float g_scale = 1.3;
 float il2 = 1./ log(g_scale);
 std::mt19937 gen;
 
+// distance are to be presented as 2^i where i is the representative for scale
 inline int get_scale(float d)
 {
     return (int) ceilf(il2 * log(d));
@@ -22,8 +22,7 @@ unsigned int rand(unsigned int a, unsigned int b)
     return dis(gen);
 }
 
-//considers two vectors of equal size
-//reasons for making it inline - small and called often 
+// considers two input vectors in some dimension i.e. of equal size
 inline float distance(const Eigen::VectorXd& p1, const Eigen::VectorXd& p2)
 {
     assert(p1.size() == p2.size());
@@ -37,12 +36,14 @@ inline float distance(const Eigen::VectorXd& p1, const Eigen::VectorXd& p2)
     return sqrt(sum);
 }
 
+// creates a tree node
 p_tree_node create_tree_node(const Eigen::VectorXd& p)
 {
     p_tree_node leaf(new tree_node(p));
     return leaf;
 }
 
+// gets all children at a scale and returns a vector with all points at that scale and distance from a given point (p). Distances stored are not scaled using `get_scale`
 void get_children(const Eigen::VectorXd& p, std::vector<p_ds_node>& Qi_p_ds, int scale)
 {
     for (unsigned int i=0; i<Qi_p_ds.size(); ++i)
@@ -59,6 +60,7 @@ void get_children(const Eigen::VectorXd& p, std::vector<p_ds_node>& Qi_p_ds, int
     }
 }
 
+// return the min distance
 float get_min(std::vector<p_ds_node>& Qi_p_ds)
 {
     float min = pow(g_scale, 100);
@@ -95,6 +97,7 @@ void knn(int k, const Eigen::VectorXd& p, p_tree_node& root)
     }
     sort(Qi_p_ds.begin(), Qi_p_ds.end(), compare);
 }
+
 void insert(const Eigen::VectorXd& p, p_tree_node& root, int max_scale)
 {
     int i = max_scale;
@@ -105,11 +108,15 @@ void insert(const Eigen::VectorXd& p, p_tree_node& root, int max_scale)
     p_tree_node parent; 
     while (1)
     {
+        // find all children at a level
         get_children(p, Qi_p_ds, i);
-        // if all the cover set nodes have distance > 2^i
         float min_d_p_Q = get_min(Qi_p_ds);
+    
+        // point already exists, so not added again
         if (min_d_p_Q == 0.0f)
             return;
+
+        // parent has been found 
         else if (min_d_p_Q > pow(g_scale, i))
             break;
         else 
@@ -119,6 +126,7 @@ void insert(const Eigen::VectorXd& p, p_tree_node& root, int max_scale)
             {
                 while (1)
                 {
+                    // randomly select a parent which satisfies the invariant i.e. <= 2^i distance from point p
                     int pos = rand(0, Qi_p_ds.size() - 1);
                     if (Qi_p_ds[pos]->dist <= scale_dist)
                     {
@@ -129,7 +137,7 @@ void insert(const Eigen::VectorXd& p, p_tree_node& root, int max_scale)
                 }
             }
             
-            // construct Q_{i-1}
+            // construct Q_{i-1} by removing all elements for which have distance greater than 2^i i.e. to maintain cover tree invariant
             for (unsigned int i=0; i<Qi_p_ds.size(); ++i)
             {
                 if (Qi_p_ds[i]->dist > scale_dist)
@@ -138,10 +146,12 @@ void insert(const Eigen::VectorXd& p, p_tree_node& root, int max_scale)
             i--;
         }
     }
+
     // need to check if p already in self.children?
     parent->children[pi].push_back(create_tree_node(p));
     root->min_scale = std::min(root->min_scale, pi-1);
 }
+
 
 
 int main(int argc, char **argv)
