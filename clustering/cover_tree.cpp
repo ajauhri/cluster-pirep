@@ -72,6 +72,23 @@ float get_min(std::vector<p_ds_node>& Qi_p_ds)
     return min;
 }
 
+// return the min node
+p_tree_node get_min_node(std::vector<p_ds_node>& Qi_p_ds)
+{
+    float min = pow(g_scale, 100);
+    p_tree_node min_node;
+    for (unsigned int i=0; i<Qi_p_ds.size(); ++i)
+    {
+        if (Qi_p_ds[i]->dist < min)
+        {
+            min = Qi_p_ds[i]->dist;
+            min_node = Qi_p_ds[i]->node;
+        }
+    }
+    return min_node;
+}
+
+
 bool compare(const p_ds_node& a, const p_ds_node& b)
 {
     return (a->dist < b->dist);
@@ -98,7 +115,7 @@ void knn(int k, const Eigen::VectorXd& p, p_tree_node& root)
     sort(Qi_p_ds.begin(), Qi_p_ds.end(), compare);
 }
 
-void insert(const Eigen::VectorXd& p, p_tree_node& root, int max_scale)
+p_tree_node insert(const Eigen::VectorXd& p, p_tree_node& root, int max_scale)
 {
     int i = max_scale;
     std::vector<p_ds_node> Qi_p_ds;
@@ -114,7 +131,9 @@ void insert(const Eigen::VectorXd& p, p_tree_node& root, int max_scale)
     
         // point already exists, so not added again
         if (min_d_p_Q == 0.0f)
-            return;
+        {
+            return get_min_node(Qi_p_ds);
+        }
 
         // parent has been found 
         else if (min_d_p_Q > pow(g_scale, i))
@@ -148,11 +167,78 @@ void insert(const Eigen::VectorXd& p, p_tree_node& root, int max_scale)
     }
 
     // need to check if p already in self.children?
-    parent->children[pi].push_back(create_tree_node(p));
+    p_tree_node new_node = create_tree_node(p);
+    parent->children[pi].push_back(new_node);
+    new_node->parent = parent;
     root->min_scale = std::min(root->min_scale, pi-1);
+    return new_node;
 }
 
+void remove(const Eigen::VectorXd& p, p_tree_node& root, int max_scale)
+{
+    int i = max_scale;
+    std::vector<p_ds_node> Qi_p_ds;
+    p_ds_node ds(new ds_node(root, distance(root->point, p)));
+    Qi_p_ds.push_back(ds);
+    
+    while (1)
+    {
+        get_children(p, Qi_p_ds, i);
+        float min_d_p_Q = get_min(Qi_p_ds);
 
+        // found
+        if (min_d_p_Q == 0.0f)
+        {
+            p_tree_node tbr_node = get_min_node(Qi_p_ds);
+
+            // unlink the node from its parent
+            if (tbr_node->parent->children[i].size() == 1)
+                tbr_node->parent->children.erase(i);
+            else 
+            {
+                for(unsigned int j=0; j<tbr_node->parent->children[i].size(); ++j)
+                {
+                    if (tbr_node->parent->children[i][j]->point == p)
+                    {
+                        tbr_node->parent->children[i].erase(tbr_node->parent->children[i].begin() + j);
+                        break;
+                    }
+                }
+            }
+            
+            // insert all children of to be deleted node, p, into the cover tree
+            typedef std::map<int, std::vector<boost::shared_ptr<tree_node>>>::iterator iter;
+            for (iter it = tbr_node->children.begin(); it != tbr_node->children.end(); ++it)
+            {
+                for (unsigned int j=0; j < it->second.size(); ++j)
+                {
+                    p_tree_node n = insert(it->second[j]->point, root, root->max_scale);
+                    // and don't forget to link the grand-children 
+                    n->children = it->second[j]->children;
+                }
+                tbr_node->children.erase(it);
+            }
+            assert(tbr_node->children.size() == 0);
+            tbr_node->parent = nullptr;
+
+        }
+        else if (min_d_p_Q > pow(g_scale, i))
+        {
+            // is it there?
+            break;
+        }
+        else
+        {
+            float scale_dist = pow(g_scale, i);
+            for (unsigned int i=0; i<Qi_p_ds.size(); ++i)
+            {
+                if (Qi_p_ds[i]->dist > scale_dist)
+                    Qi_p_ds.erase(Qi_p_ds.begin() + i);
+            }
+            i--;
+        }
+    }
+} 
 
 int main(int argc, char **argv)
 {
@@ -167,7 +253,9 @@ int main(int argc, char **argv)
     {
         float dist = distance(X.row(0), X.row(i));
         max_dist = max_dist < dist ? dist : max_dist;
+        std::cout<<X.row(i)[0]<<" "<<X.row(i)[1]<<" "<<X.row(i)[2]<<"\n";
     }
+    std::cout<<"************\n";
     p_tree_node root = create_tree_node(X.row(0));
     root->max_scale = get_scale(max_dist);
     root->min_scale = root->max_scale;

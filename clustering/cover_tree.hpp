@@ -10,10 +10,10 @@ struct tree_node
     Eigen::VectorXd point;
     int max_scale;
     int min_scale;
+    boost::shared_ptr<tree_node> parent;
 
     // scale/level wise list of children
     std::map<int, std::vector<boost::shared_ptr<tree_node>>> children;
-
     tree_node(Eigen::VectorXd p) : point(p), max_scale(0), min_scale(0) {}
 };
 typedef boost::shared_ptr<tree_node> p_tree_node;
